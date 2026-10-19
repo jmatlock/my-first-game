@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Star Trek Movie Trivia</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#eaf0ff;background:#080d1c;color-scheme:dark}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 75% 10%,#26385b 0,transparent 45%),#080d1c;display:grid;place-items:center;padding:22px}main{width:min(100%,690px);background:#121e36;border:1px solid #3c567b;border-radius:20px;padding:clamp(22px,5vw,44px);box-shadow:0 20px 50px #0007}header{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:25px}.eyebrow{letter-spacing:.17em;text-transform:uppercase;color:#73d8ff;font-size:.78rem;font-weight:700}h1{font-size:clamp(1.8rem,5vw,2.7rem);line-height:1.15;margin:.2em 0 .7em}h2{font-size:clamp(1.25rem,3vw,1.8rem);line-height:1.35}p{line-height:1.6;color:#d1dced}.muted{color:#a3b7d6;font-size:.95rem}.pill{border:1px solid #587091;border-radius:99px;padding:6px 12px;white-space:nowrap}.answers{display:grid;gap:12px;margin:25px 0}button{font:inherit;border-radius:10px;padding:14px 17px;cursor:pointer;text-align:left;border:1px solid #7187a6;background:#203151;color:#fff}button:hover:not(:disabled){background:#344b72}button:focus-visible{outline:3px solid #f4d16e;outline-offset:3px}button:disabled{cursor:default;opacity:.75}button.primary{background:#f3c85d;color:#13233c;border-color:#f3c85d;font-weight:750;text-align:center}button.primary:hover:not(:disabled){background:#ffde85}button.correct{border-color:#8be0af;background:#174535}button.wrong{border-color:#ffafaf;background:#5c2c35}.feedback{padding:15px 17px;border-radius:10px;background:#1d3148;border-left:4px solid #f3c85d;margin:10px 0 20px}.hidden{display:none!important}.row{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:22px}.actions button{min-width:140px;text-align:center}footer{border-top:1px solid #38506c;margin-top:28px;padding-top:15px;color:#91a7c4;font-size:.85rem}@media(max-width:450px){header{align-items:flex-start}main{padding:20px}button{width:100%}.actions{display:grid}}
+</style>
+<script src="questions.js" defer></script>
+<script defer>
+'use strict';
+window.addEventListener('DOMContentLoaded',()=>{
+  const $=id=>document.getElementById(id);
+  const startScreen=$('start-screen'), playScreen=$('play-screen'), resultScreen=$('result-screen');
+  const questionText=$('question'), answers=$('answers'), feedback=$('feedback'), next=$('next');
+  let round=[], position=0, score=0, answered=false, showingHelp=false;
+  function validBank(){
+    if(typeof questionBank==='undefined'||!Array.isArray(questionBank)||questionBank.length<5)return false;
+    const ids=new Set(), prompts=new Set();
+    for(const q of questionBank){
+      if(!q||typeof q.id!=='string'||!q.id.trim()||ids.has(q.id)||typeof q.prompt!=='string'||!q.prompt.trim()||prompts.has(q.prompt.trim().toLowerCase())||!Array.isArray(q.choices)||q.choices.length!==3||q.choices.some(x=>typeof x!=='string'||!x.trim())||!Number.isInteger(q.correctIndex)||q.correctIndex<0||q.correctIndex>2||typeof q.explanation!=='string'||!q.explanation.trim())return false;
+      ids.add(q.id);prompts.add(q.prompt.trim().toLowerCase());
+    }
+    return true;
+  }
+  function drawFive(){let bank=questionBank.slice();for(let i=bank.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[bank[i],bank[j]]=[bank[j],bank[i]];}return bank.slice(0,5);}
+  function screen(s){startScreen.classList.toggle('hidden',s!=='start');playScreen.classList.toggle('hidden',s!=='play');resultScreen.classList.toggle('hidden',s!=='result');}
+  function start(){if(!validBank()){showError();return;}round=drawFive();position=0;score=0;answered=false;showingHelp=false;showQuestion();screen('play');}
+  function showQuestion(){const q=round[position];answered=false;$('progress').textContent=`Question ${position+1} of 5`;$('score').textContent=`Score: ${score}`;$('film').textContent=q.film;questionText.textContent=q.prompt;answers.replaceChildren();feedback.classList.add('hidden');feedback.textContent='';next.classList.add('hidden');$('help-panel').classList.add('hidden');$('help').textContent='Show instructions';for(let i=0;i<3;i++){let b=document.createElement('button');b.type='button';b.textContent=`${String.fromCharCode(65+i)}. ${q.choices[i]}`;b.addEventListener('click',()=>choose(i));answers.appendChild(b);}}
+  function choose(i){if(answered)return;answered=true;const q=round[position];if(i===q.correctIndex)score++;$('score').textContent=`Score: ${score}`;[...answers.children].forEach((b,j)=>{b.disabled=true;if(j===q.correctIndex)b.classList.add('correct');else if(j===i)b.classList.add('wrong');});feedback.textContent=`${i===q.correctIndex?'Correct!':'Not quite.'} ${q.explanation}`;feedback.classList.remove('hidden');next.textContent=position===4?'See final score':'Next question';next.classList.remove('hidden');}
+  function advance(){if(!answered)return;if(position===4){$('final-score').textContent=`${score} out of 5`;$('result-message').textContent=score===5?'Perfect score. Ready for another mission?':'Mission complete. Try another five questions!';screen('result');}else{position++;showQuestion();}}
+  function showError(){$('start-error').textContent='The question bank is missing or invalid. Check that questions.js is alongside index.html and run the bank validator.';$('start-error').classList.remove('hidden');$('start').disabled=true;}
+  $('start').addEventListener('click',start);$('replay').addEventListener('click',start);next.addEventListener('click',advance);
+  $('help').addEventListener('click',()=>{showingHelp=!showingHelp;$('help-panel').classList.toggle('hidden',!showingHelp);$('help').textContent=showingHelp?'Hide instructions':'Show instructions';});
+  if(!validBank())showError();
+});
+</script>
+</head>
+<body>
+<main>
+  <header><span class="eyebrow">A fan-made trivia mission</span><span class="pill">1979–2002 films</span></header>
+  <section id="start-screen">
+    <h1>Star Trek Movie Trivia</h1>
+    <p>Test your knowledge of the original crew and Next Generation films. Each mission chooses five random questions from a growing pool.</p>
+    <p>Choose one answer per question, read the explanation, and move to the next question. Earn one point per correct answer. Your mission ends after five questions.</p>
+    <p id="start-error" class="feedback hidden" role="alert"></p>
+    <button id="start" class="primary" type="button">Start mission</button>
+  </section>
+  <section id="play-screen" class="hidden">
+    <div class="row muted"><span id="progress">Question 1 of 5</span><span id="score">Score: 0</span></div>
+    <p class="eyebrow" id="film"></p>
+    <h2 id="question"></h2>
+    <div id="answers" class="answers" aria-label="Answer choices"></div>
+    <div id="feedback" class="feedback hidden" role="status" aria-live="polite"></div>
+    <div class="actions"><button type="button" class="primary hidden" id="next">Next question</button><button type="button" id="help">Show instructions</button></div>
+    <div id="help-panel" class="feedback hidden"><p>Choose one of the three answers. Once you choose, your answer locks. Select Next to continue. Your score is the number of correct answers out of five.</p></div>
+  </section>
+  <section id="result-screen" class="hidden">
+    <p class="eyebrow">Mission complete</p><h1 id="final-score">0 out of 5</h1>
+    <p id="result-message"></p><button type="button" class="primary" id="replay">Play again</button>
+  </section>
+  <footer>Unofficial fan-created game. Star Trek names are used for trivia identification only. No affiliation with Paramount.</footer>
+</main>
+</body>
+</html>
